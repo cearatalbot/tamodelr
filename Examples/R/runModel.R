@@ -63,21 +63,17 @@ for(y in 1:nrow(initDF)){
   params<-as.numeric(PFTtable[,which(colnames(PFTtable)==initDF$PFT[y])])  #params for each pft. goes to pft[y] in the pft table, extracts table as pure list of numbers
   names(params)<-PFTtable$pName #name params
   if(initDF$PFT[y]=="EGBR"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01, as.numeric(params[[41]]*.90), 0.0001, 10, 10) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01, as.numeric(params[[41]]*.90), 0.0001, 10, 200000000) #fill initial conditions
   } else if(initDF$PFT[y]=="EGNE"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 10) #fill initial conditions
-  } else if(initDF$PFT[y]=="EGNE1"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 10) #fill initial conditions
-  } else if(initDF$PFT[y]=="EGNE2"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 10) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 200000000) #fill initial conditions
   } else if(initDF$PFT[y]=="DEBR"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 10) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000000) #fill initial conditions
   } else if(initDF$PFT[y]=="DENE"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 10) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000000) #fill initial conditions
   } else if(initDF$PFT[y]=="SH"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(10000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 2500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 10) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(10000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 2500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000000) #fill initial conditions
   } else if(initDF$PFT[y]=="GR" | initDF$PFT[y]=="CR"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(0, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 10) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(0, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000000) #fill initial conditions
   }
 }
 
@@ -90,7 +86,7 @@ for(i in 1:nrow(initDF)){
 
     site_forcings$year<-substr(site_forcings$TIMESTAMP, 1,4) # add a year column
     #site forcings makes unuique forcings every day of the year for x years
-    
+
     # needs to start on a january first for generating leaf on / leaf off days properly
     site_forcings$mon_day<-paste(substr(site_forcings$TIMESTAMP, 5,6), substr(site_forcings$TIMESTAMP, 7,8), sep="-")
     if(site_forcings$mon_day[1] != "01-01"){
@@ -109,8 +105,8 @@ for(i in 1:nrow(initDF)){
     S0<<-c(Cw=initDF[i,1],Cl=initDF[i,2],Cs1=initDF[i,3],Cs2=initDF[i,4], Cs3=initDF[i,5],
            Cs4=initDF[i,6], Cdoc1=initDF[i,7], Cdoc2=initDF[i,8], W1=initDF[i,9],
            W2=initDF[i,10], Ca=initDF[i,11], Cr=initDF[i,12], Ccwd=initDF[i,13],
-           Cdic1=initDF[i,14], Cdic2=initDF[i,15], W3=initDF[i,16], Cdic3=initDF[i,17], Cdoc3=initDF[i,18],
-           Calat=initDF[i,19])                         
+           Cdic1=initDF[i,14], Cdic2=initDF[i,15], W3=initDF[i,16], Cdic3=initDF[i,17],
+           Cdoc3=initDF[i,18], Ci = initDF[i,19])
 
     #define forcing approx functions #interpolate smoothly through time for ode
     PARapprox<<-approxfun(x=as.numeric(site_forcings$runDay), y = as.numeric(site_forcings$PAR_e))
@@ -150,12 +146,6 @@ for(i in 1:nrow(initDF)){
   }
 
   spinup$pft<-initDF$PFT[i] #label PFT
-  #save model spinup outputs
-  if(i==1){
-    spinupAll<-spinup
-  } else{
-    spinupAll<-rbind(spinupAll, spinup)
-  }
 
   #update the initial conditions for dynamic runs with the model outputs from the last day of spin-up
   #we can ask: how do these final initial conditions change when we adjust values about the lake? 
