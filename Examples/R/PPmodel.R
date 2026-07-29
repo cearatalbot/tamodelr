@@ -80,12 +80,12 @@ PPStep<-function(t,S,p, DIC=TRUE){ #default to including dissolved CO2 export
     
     kl = 0.5;alpha_DOC=0.5#not sure what real base value should be whats a good S0 for light extinction facotr?#alpha should be param
     Ca_conc = Ca/(Aa*zbar) #[gC/m^-3]
-    kl_dynamic = kl + (alpha_DOC*Ca_conc)
+    kl_dynamic = kl + (alpha_DOC*Ca_conc) #would introcuding a DIC/DOC ratio imporve this or not?
     Iz = PAR*exp(-kl_dynamic*z)# light at each levels 
     
     Dlightz = 1-exp(-(Iz*log(2)/PARhalf))  # >>light intensity into number from 0-1
     Dlightz_bar = mean(Dlightz)
-    PP_pot = PP_max*Dlightz_bar*Dtemp*Aa#[g C (m ground)-2 day-1] same as GPP
+    PP_pot = PP_max*Dlightz_bar*Dtemp*Aa#[g C (m ground)-2 day-1] same as GPP#units good but PPmax off
     #--------------------------------------------------------------------------------------------------
     
     #respiration

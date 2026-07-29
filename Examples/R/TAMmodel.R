@@ -16,7 +16,7 @@
 #dCdoc2.dt = Bdoc+Ls3-LCT2-Rhdoc2                               [g C m-2 day-1] ##Cdoc2 = middle DOC pool, Ls3= DOC leached from Cs3, LCT2= LCT from middle layer, Rhdoc2= heterotrophic respiration of middle layer DOC
 #dCdoc3.dt = Bdoc2-LCT3                                         [g C m-2 day-1] ##Cdoc3 = lower DOC pool, LCT3= LCT from lower layer
 #dW1.dt = (P-P*pctInt)-Q1-Q12                                   [cm water equivalence day-1] ##P = precipitation, Q1 = lateral drainage from upper water layer, D = vertical drainage
-#dW2.dt = Q12-Q2-T                                              [cm water equivalence day-1] ##Q2 = lateral drainage from middle water layer, T= transpiration
+#dW2.dt = Q1n2-Q2-T                                              [cm water equivalence day-1] ##Q2 = lateral drainage from middle water layer, T= transpiration
 #dW3.dt = Q23-Q3                                                [cm water equivalence day-1] ##Q3 = lateral drainage from lower water layer, Q3 = export from lower water layer
 #dCa.dt=LCT1*Ac + Aa*(P/100)*Cprecip-(Ca/V)*Qout-deltaA*Ca      [g C] ##Ca = aquatic carbon
 #dCdic1.dt = I1-LDIC1-Iout1-Bdic                                [g C m-2 day-1]  ##Cdic1 = upper dissolved CO2 pool, LDIC1= lateral export of dissolved CO2, Iout1= CO2 emitted to the atmosphere, Bdic1= burial of dissolved CO2 from upper to middle layerr
@@ -26,6 +26,7 @@
 # define model for simulation
 tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including dissolved CO2 export
   with(as.list(c(S,p)),{
+    print(t)
 
     ### forcings
     PAR=PARapprox(t)  #[einsteins m-2 day-1]
@@ -33,6 +34,8 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     VPD=VPDapprox(t)  #[kPa]
     Tair=Tair_approx(t)  #[degrees C]
     Tsoil=Tsoil_approx(t)  #[degrees C]
+    SW_IN<-SW_IN_approx(t)
+    LW_IN <- LW_IN_approx(t)
     #moved leaves from this spot
     Evap=Evap_approx(t) #[cm day-1]
     Snow=Snowapprox(t) #[cm day-1]
@@ -48,34 +51,90 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     Dtemp = max(((Tmax-Tair)*(Tair-Tmin))/(((Tmax-Tmin)/2)^2), 0) #[unitless]
     Dvpd = max(1-Kvpd*VPD^Kvpd2, 0) #[unitless]
 
+    #--------------------------------------------------------------------------------------------------
     #GPPmax
     Rfo = Kf*Amax   #[nmol CO2 (g leaf)-1 s-1]
     GPPmax = Amax*Ad+Rfo  #[nmol CO2 (g leaf)-1 s-1]
-
     LAIareal = Cl/(SLW*Cfrac) #[m2 leaves (m ground)-2]
-
     # leaves and leaf litter
     LAIi = seq(0,LAIareal,length.out=50) #[m2 leaves (m ground)-2]
     Ii = PAR*exp(-k*LAIi)  #[einsteins m-2 day-1]
     Dlighti = 1-exp(-(Ii*log(2)/PARhalf))  #[unitless]
     Dlightbar = mean(Dlighti)  #[unitless]
 
-
+    #--------------------------------------------------------------------------------------------------
     #GPP potential
     GPPpot = GPPmax*Dtemp*Dvpd*Dlightbar*(60*60*24)*12*(1/1e9)#[g C leaf day-1]
     GPPpotAreal = GPPpot*LAIareal*SLW   #[g C (m ground)-2 day-1]
-
     ev<-pctInt #ifelse(LAIareal > (Lmax/2), pctInt, 0)
     #water limitation of GPP
     WUE = max(Kwue/VPD,0) #[mg CO2 (g H2O)-1] #Kwue units: mg CO2 KPa (g H2O)-1
-
     TpotAreal=ifelse(WUE > 0, GPPpotAreal/WUE*1000*(44/12)*1e-4, 0) #[cm H2O m-2 day-1]; (60*60*24)= seconds in a day, 1=g H2O to cm^3 H2O, 1e-4 m-2 to cm-2
     Wa=max(W2*f, 0)  #[cm day-1], from lower layer
     T = min(c(TpotAreal,Wa))  #[cm day-1]
     Dwater = ifelse(TpotAreal==0,0,T/TpotAreal)  #[unitless]
     ET=T+(P*ev) #cm
-
     GPP = GPPpotAreal*Dwater  #[g C (m ground)-2 day-1]
+    #--------------------------------------------------------------------------------------------------
+    #AQUATIC PRIMARY PRODUCTIVITY
+    #max possible APP
+    DIC_Conc <- Ci/(Aa*zbar)
+    DOC_Conc <- (Ca)/(Aa*zbar) #[gC/m^-3]
+    Alg_Conc <- Alg/(Aa*zbar) ##[gC/m^-3]
+    eating_efficency = 0.95
+    APP_max <- (0.8*DIC_Conc)*eating_efficency + 0.2*DOC_Conc#remember: if DOC is really high DOC can still let algal grow when no DIC
+
+
+    #parameter for stoichiometry then use how much phos and nitr is coming in per unit carbon. As is for now but adress before we finish
+
+    #TEMP
+    #Tz msut be made global since tamstep is solved repeatedly in an exterior loop: Tz needs to be saved
+    Tz <<- tprofile(t, Tz, zbar, PAR, Tair, Evap, LW_IN, SW_IN,Ca)
+    Tz_hist[t,] <<- Tz
+    levs = seq(0,zbar,length.out=length(Tz)) #levs of lake. 1 per temp level
+
+    #LIGHT
+    #kd_tahoe = 0.12#base extinciton rate(kl) for lake tahoe (water on the web)#turbidity(particulate) should haev greater effect
+    algal_blur = 0.1 # what is the relashonhsip between alage presnt and light attenutaution?
+    self_shading <- Alg_Conc* algal_blur
+    kd= 0.321*exp(0.13*(DOC_Conc))+self_shading #Kd according to DOC. (Seekell=.13,0.321)<small lake relation
+    Iz = PAR*exp(-kd*levs)# light at each levels. use this for temp
+    Dlightz = 1-exp(-(Iz*log(2)/PARhalf))  # >>light intensity into number from 0-1 at each level
+    Dlightz_bar = mean(Dlightz)
+
+    #have Tz sample and Iz. combine for plankton APP_max at each level
+    Topt = 25; Tmin = 5
+    Iz_min = 0.1 #av value from species list in Nicklisch
+    max_growth <- 1.25 # if conditions are right whats the max algal spread rate?<- av value form table 2 Nicklisch
+    init_growth <- 0.5 # how much is light a limiting factor initially (low light) av value
+    APP_max_by_level <- numeric(length(levs))
+    Iz_by_level <- numeric(length(levs))
+    for(i in seq_along(levs)){
+      t_weighted <- exp(-2.3*((Topt - Tz[i])/(Topt - Tmin))^2)
+      Iz_effective <- max(Iz[i] - Iz_min, 0)
+      Iz_by_level[i] <- Iz_effective
+      growth_rate <- max_growth * t_weighted * (1 - exp(-(init_growth * Iz_effective)/(max_growth * t_weighted)))
+      growth_score <- (growth_rate / max_growth)
+      APP_max_by_level[i] <- (growth_score * APP_max)*(Aa*zbar)
+    }
+    APP_hist[t,] <<- APP_max_by_level#save each temp-light combo per level per day
+    Iz_hist[t,] <<- Iz_by_level
+
+
+
+    #new APP_pot from ligth-temp
+    APP <- mean(APP_max_by_level)
+    #Must be a DIC threshold. If theres no DIC there cannot be algal growth on DOC alone
+    DIC_threshold <- 1e-6*(Aa*zbar)
+    if(Ci <= DIC_threshold){
+      APP <- 0
+    }
+    APP <- min(APP,Ci)#APP cannot take more carbon than is available in DIC pool
+
+
+    death_rate = Alg/50 # #gC in algae removed per time step
+    #radiaiotn should raise death rate at the surface
+    #--------------------------------------------------------------------------------------------------
 
     #respiration
     Rf = max(Rfo*Q10v^((Tair-Topt)/10), 0) #[nmol CO2 (g leaf)-1 s-1]
@@ -266,8 +325,8 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
 
     ero=er*Cs2 #erosion calculated from erosion constant and upper, non-soluble C pool
 
-    precipCi = (atmCO2*1e-3)*(12/44) # g C m^3
-    em_C = min(-kCO2*(Cstar-(Ci/V))*Aa, ((LDIC1+LDIC2+LDIC3)*Ac + deltaA*Ca + Aa*(P+Snow)*precipCi-(Ci/V)*Qout)) # vertical CO2 flux from lake surface [g C m^-2]
+    Ciprecip = (atmCO2*1e-3)*(12/44) # g C m^3
+    em_C = min(-kCO2*(Cstar-(Ci/V))*Aa, ((LDIC1+LDIC2+LDIC3)*Ac + deltaA*Ca + Aa*(P+Snow)*Ciprecip-(Ci/V)*Qout)) # vertical CO2 flux from lake surface [g C m^-2]
 
     ## we will need to add an equation for settling of POC and phytoplankton
     # se_C = # settling of POC out of water column [g C]
@@ -287,12 +346,13 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     dW3.dt = Q23-Q3
     dCr.dt = alCr-Rr-Lr
     dCcwd.dt = Lw-lout
-
     #lake differential equations
-    dCa.dt = (LCT1+LCT2+LCT3)*Ac + Aa*(P+Snow)*Cprecip-(Ca/V)*Qout-deltaA*Ca #aquatic DOC pool; [g C]
-    dCi.dt = (LDIC1+LDIC2+LDIC3)*Ac + deltaA*Ca + Aa*(P+Snow)*precipCi-(Ci/V)*Qout - em_C # aquatic DIC pool; [g C]
+    dCa.dt = (LCT1+LCT2+LCT3)*Ac    + Aa*(P+Snow)*Cprecip-(Ca/V)*Qout  -deltaA*Ca #aquatic DOC pool; [g C]
+    dCi.dt = (LDIC1+LDIC2+LDIC3)*Ac + Aa*(P+Snow)*Ciprecip-(Ci/V)*Qout +deltaA*Ca - (em_C/2) - APP # aquatic DIC pool; [g C]
+    dAlg.dt = APP - death_rate
     # dCp.dt = ero*Ac - (Cp/V)*Qout - [SETTLING] # aquatic POC pool (from terrestrial inputs); [g C]
-      # add a phytoplankton biomass pool [g C]
+    #Add a phytoplankton biomass pool [g C]
+
 
     if(trblshoot==TRUE){
       if(DIC==TRUE){
@@ -302,7 +362,7 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
 
         return(list(c(dCw.dt,dCl.dt,dCs1.dt, dCs2.dt, dCs3.dt, dCs4.dt, dCdoc1.dt,
                       dCdoc2.dt, dW1.dt, dW2.dt, dCa.dt, dCr.dt, dCcwd.dt, dCdic1.dt,
-                      dCdic2.dt, dW3.dt, dCdic3.dt, dCdoc3.dt, dCi.dt),
+                      dCdic2.dt, dW3.dt, dCdic3.dt, dCdoc3.dt, dCi.dt,dAlg.dt),
                     c(GPP=GPP,Q1=Q1, Q2=Q2, Rf = Rf, Ra = Ra,
                       NPP = NPP, LCT1 = LCT1, Rs3=Rs3, Dwater=Dwater,
                       Wa=Wa, TpotAreal=TpotAreal, i0=i0, T=T,
@@ -321,7 +381,7 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
                       Q23=Q23, LCT3=LCT3, LDIC3=LDIC3, Bdic2=Bdic2)))
       } else{
         return(list(c(dCw.dt,dCl.dt,dCs1.dt, dCs2.dt, dCs3.dt, dCs4.dt, dCdoc1.dt,
-                      dCdoc2.dt, dW1.dt, dW2.dt, dCa.dt, dCr.dt, dCcwd.dt, dW3.dt, dCi.dt),
+                      dCdoc2.dt, dW1.dt, dW2.dt, dCa.dt, dCr.dt, dCcwd.dt, dW3.dt, dCi.dt,dAlg.dt),
                     c(GPP=GPP,Q1=Q1, Q2=Q2, Rf = Rf, Ra = Ra,
                       NPP = NPP, LCT1 = LCT1, Rs3=Rs3, Dwater=Dwater,
                       Wa=Wa, TpotAreal=TpotAreal, i0=i0, T=T,
@@ -344,7 +404,7 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
 
         return(list(c(dCw.dt,dCl.dt,dCs1.dt, dCs2.dt, dCs3.dt, dCs4.dt, dCdoc1.dt,
                       dCdoc2.dt, dW1.dt, dW2.dt, dCa.dt, dCr.dt, dCcwd.dt, dCdic1.dt,
-                      dCdic2.dt, dW3.dt, dCdic3.dt, dCdoc3.dt, dCi.dt),
+                      dCdic2.dt, dW3.dt, dCdic3.dt, dCdoc3.dt, dCi.dt,dAlg.dt),
                     c(GPP=GPP,Q1 = Q1, Q2 = Q2, Q3 = Q3, Ra = Ra,
                       NPP = NPP, LCT1 = LCT1, T = T, LAIareal=LAIareal,
                       V=V, Qout=Qout, LCT2=LCT2, ET=ET, LDIC1=LDIC1, LDIC2=LDIC2,
@@ -352,7 +412,7 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
                        LCT3=LCT3, LDIC3=LDIC3)))
       } else{
         return(list(c(dCw.dt,dCl.dt,dCs1.dt, dCs2.dt, dCs3.dt, dCs4.dt, dCdoc1.dt,
-                      dCdoc2.dt, dW1.dt, dW2.dt, dCa.dt, dCr.dt, dCcwd.dt, dW3.dt, dCi.dt),
+                      dCdoc2.dt, dW1.dt, dW2.dt, dCa.dt, dCr.dt, dCcwd.dt, dW3.dt, dCi.dt,dAlg.dt),
                     c(GPP = GPP, Q1 = Q1, Q2 = Q2, Ra = Ra,
                       NPP = NPP, LCT1 = LCT1, T = T, LAIareal = LAIareal,
                       V=V, Qout=Qout,  LCT2=LCT2,
