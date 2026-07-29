@@ -85,7 +85,7 @@ PPStep<-function(t,S,p, DIC=TRUE){ #default to including dissolved CO2 export
     
     Dlightz = 1-exp(-(Iz*log(2)/PARhalf))  # >>light intensity into number from 0-1
     Dlightz_bar = mean(Dlightz)
-    PP_pot = PP_max*Dlightz_bar*Dtemp*Aa#[g C (m ground)-2 day-1] same as GPP
+    PP_pot = PP_max*Dlightz_bar*Dtemp*Aa#[g C (m ground)-2 day-1] same as GPP#units good but PPmax off
     #--------------------------------------------------------------------------------------------------
     
     #respiration

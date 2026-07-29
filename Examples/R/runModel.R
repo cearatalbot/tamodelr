@@ -8,10 +8,13 @@ library(deSolve) # load differential equation solver from library
 source("Examples/R/GddCalc.R") # calculate growing degree days
 source("Examples/R/TAMmodel.R") # model code
 source("Examples/R/addLeaves.R") # calculate leaf on/ leaf off
+source("Examples/R/tprofile_helpers.R")
+source("Examples/R/temp_profile_funciton.R")
 
 forcings<-read.csv("Examples/Data/OSBS_neonForcings_ex.csv") # read in forcing data
   #there are a bunch of variables from this file that we don't need right now; let's keep only what we need
-  site_forcings<-data.frame(cbind(TIMESTAMP=forcings$TIMESTAMP, TA_F=forcings$TA_F, forcings[,106:113]))
+  site_forcings<-data.frame(cbind(TIMESTAMP=forcings$TIMESTAMP, TA_F=forcings$TA_F,
+                    SW_IN_F=forcings$SW_IN_F, LW_IN_F=forcings$LW_IN_F, forcings[,106:113]))
   PFTtable<-read.csv("Examples/Data/paramTable.csv")# read in parameter table
  #vector of plant functional types at OSBS neon site
 PFTtable$"EGNE1" <- PFTtable$"EGNE"#add new EGNE- Same PFT diff lake properties
@@ -20,9 +23,12 @@ pfts_site<-c("EGNE")#,"EGNE1","EGNE2"
 
 #### we need to find and assign the lake-specific parameters for the SUGG neon site
 # Aa = surface area (m^2), Ac = catchment area (m^2), zbar = mean depth (m)
-zbar = 2.06
-Ac = 3.96 * 10^7
-Aa = 730000
+zbar <- 25
+dz <<-1
+z_levs <- seq(0,zbar,dz)
+Ac <- 3.96 * 10^7
+Aa <- 730000
+
 #the lake qualities are encoded in the plant types; every PFT has the same lake depth, SA, etc
 PFTtable[which(PFTtable$pName=="zbar"), 2:8]<-zbar
 PFTtable[which(PFTtable$pName=="Ac"), 2:8]<-Ac
@@ -63,26 +69,26 @@ for(y in 1:nrow(initDF)){
   params<-as.numeric(PFTtable[,which(colnames(PFTtable)==initDF$PFT[y])])  #params for each pft. goes to pft[y] in the pft table, extracts table as pure list of numbers
   names(params)<-PFTtable$pName #name params
   if(initDF$PFT[y]=="EGBR"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01, as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01, as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0.2e8) #fill initial conditions
   } else if(initDF$PFT[y]=="EGNE"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0.2e8) #fill initial conditions
   } else if(initDF$PFT[y]=="EGNE1"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0.2e8) #fill initial conditions
   } else if(initDF$PFT[y]=="EGNE2"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.0001, 10, 200000,0.2e8) #fill initial conditions
   } else if(initDF$PFT[y]=="DEBR"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60, 60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0.2e8) #fill initial conditions
   } else if(initDF$PFT[y]=="DENE"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(13000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 3000, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0.2e8) #fill initial conditions
   } else if(initDF$PFT[y]=="SH"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(10000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 2500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(10000, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 2500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0.2e8) #fill initial conditions
   } else if(initDF$PFT[y]=="GR" | initDF$PFT[y]=="CR"){
-    initDF[y,1:(ncol(initDF)-1)]<-c(0, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0) #fill initial conditions
+    initDF[y,1:(ncol(initDF)-1)]<-c(0, as.numeric(params[[55]]*params[[20]]*params[[21]]), 60,60, 300, 2000, 50, 30, as.numeric(params[[19]]*.90), as.numeric(params[[41]]*.90), 600000, 500, 50, 0.01, 0.01,  as.numeric(params[[41]]*.90), 0.01, 10, 200000,0.2e8) #fill initial conditions
   }
 }
 
-spinupALL <- vector("list", nrow(initDF))#added to keep track of all PFT results
-names(spinupALL)<-pfts_site
+spinupALL_kd <- vector("list", nrow(initDF))#added to keep track of all PFT results
+names(spinupALL_kd)<-pfts_site
 #4a. Loop over each plant functional type
 for(i in 1:nrow(initDF)){
   nruns=0 #keep track of how many times spinup simulations are done for each pft
@@ -128,9 +134,17 @@ for(i in 1:nrow(initDF)){
     sen_approx<<-approxfun(x=as.numeric(site_forcings$runDay), y=as.numeric(site_forcings$sen))
     grow_approx<<-approxfun(x=as.numeric(site_forcings$runDay), y=as.numeric(site_forcings$grow))
     green_approx<<-approxfun(x=as.numeric(site_forcings$runDay), y=as.numeric(site_forcings$greenup))
+    SW_IN_approx <<- approxfun(x = as.numeric(site_forcings$runDay), y = as.numeric(site_forcings$SW_IN_F))
+    LW_IN_approx <<- approxfun(x = as.numeric(site_forcings$runDay), y = as.numeric(site_forcings$LW_IN_F))
+    Tz<<-NULL
+    #---------------------------------------------------------------------------
+    #to save the temperature and algal growth profile (see how they evolve)
+    APP_hist  <<- matrix(0, nrow = nrow(forcings), ncol = length(z_levs))
+    Tz_hist <<- matrix(0, nrow = nrow(forcings), ncol = length(z_levs))
+    Iz_hist <<- matrix(0, nrow = nrow(forcings), ncol = length(z_levs))
 
     spinup=ode(y=S0,times=spin_times,func=tamStep, parms=params, method="euler") #run the model!
-    spinup=data.frame(spinup) 
+    spinup=data.frame(spinup)
 
     nruns<-nruns+1 #continue keeping track of the number of runs until equilibrium is achieved..
 
@@ -152,14 +166,15 @@ for(i in 1:nrow(initDF)){
   }
 
   spinup$pft<-initDF$PFT[i] #label PFT
-  spinupALL[[i]] <- spinup # add each PFT to spinupALL
+  spinupALL_kd[[i]] <- spinup # add each PFT to spinupALL_kd
 
   #update the initial conditions for dynamic runs with the model outputs from the last day of spin-up
-  #we can ask: how do these final initial conditions change when we adjust values about the lake? 
+  #we can ask: how do these final initial conditions change when we adjust values about the lake?
   for(z in 1:(ncol(inits)-1)){ #i = PFT =row
     inits[i,z]<-spinup[nrow(spinup),which(colnames(spinup)==colnames(inits)[z])]
   }
 }#end model loop
-spinupALL <- do.call(rbind, spinupALL)#one single df instead of 3 in a vector
+spinupALL_kd <- do.call(rbind, spinupALL_kd)#one single df instead of 3 in a vector
+rownames(spinupALL_kd) <- NULL#remove unhelpfull first col
 
 
