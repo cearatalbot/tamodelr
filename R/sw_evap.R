@@ -2,7 +2,7 @@
 ### Eavaporation from surface water
 # Penman equation
 # arguments: mean air temp [deg C], vpd [Pa], net radiation [W m-2], elevation [m]
-evap_calc<-function(tair, vpd, netrad, elev){
+evap_calc<-function(tair, vpd, vp, netrad, elev){
 
   #parameters
   LAPSE_PM = -0.006  #environmental lapse rate [C m-1]
@@ -19,7 +19,7 @@ evap_calc<-function(tair, vpd, netrad, elev){
   SEC_PER_DAY = 86400  #seconds per day
   H2O_SURF_ALBEDO = 0.08  #albedo of water surface
   STEFAN_B = 5.6696e-8 #5.6696e-8, stefan-boltzmann constant [W/m^2/K^4]
-
+  E = 0.97 #emissivitiy of water surface
   # INTERMEDIATE EQUATIONS
   h = 287/9.81*((tair)+0.5*elev*LAPSE_PM)  #scale height in the atmosphere [m?]
   pz = PS_PM*exp(-elev/h)  #surface air pressure [Pa]
@@ -33,7 +33,10 @@ evap_calc<-function(tair, vpd, netrad, elev){
   svp = (6.11*exp((2.5*10^6/461.52)*((1/273.15)-(1/(tair+273.15)))))*100  # saturated vapor pressure, [Pa]
   slope =((B_SVP*C_SVP)/(C_SVP+tair)*(C_SVP+tair))*svp  #slope of saturated vapor pressure curve [Pa K-1]
 
+  sw=(1-H2O_SURF_ALBEDO)*(0.75 + 2*10e-5 * elev)*netrad #clear day solar radiation W m^2 day^-1 ... eqn 37 http://www.fao.org/3/X0490E/x0490e07.htm#air%20temperature
+  lw= (STEFAN_B *(tair+273.15)*0.34-0.14*sqrt(vp)*(1.35*1-0.35)) # longwave
+
   evap = ((slope*netrad+r_air*CP_PM*vpd/ra)/(lv*(slope+gamma*(1+(rc+rarc)/ra)))*SEC_PER_DAY)/10 #evaporation [cm day-1]
 
-  return(evap)
+  return(data.frame(evap, sw, lw))
 }
