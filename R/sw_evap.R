@@ -35,5 +35,7 @@ evap_calc<-function(tair, vpd, netrad, elev){
 
   evap = ((slope*netrad+r_air*CP_PM*vpd/ra)/(lv*(slope+gamma*(1+(rc+rarc)/ra)))*SEC_PER_DAY)/10 #evaporation [cm day-1]
 
+  #can also use STEFAN_B, albedo TAF and eAIR for LW and SW
+
   return(evap)
 }

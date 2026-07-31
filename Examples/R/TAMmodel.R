@@ -77,6 +77,11 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     GPP = GPPpotAreal*Dwater  #[g C (m ground)-2 day-1]
     #--------------------------------------------------------------------------------------------------
     #AQUATIC PRIMARY PRODUCTIVITY
+    #condition for when epilimnion dpeth does not exhist or just put temp at the very start
+    V_upper <- Aa*epilimnion_depth[t]
+    V_lower <- Aa*zbar-epilimnion_depth[t]
+
+    #DIC_conc_upr <- Ci1/(V_upr);DIC_conc_lwr<- Ci2/(V_lwr)
     DIC_conc <- Ci/(Aa*zbar)
     DOC_conc <- (Ca)/(Aa*zbar) #[gC/m^-3] #gradient? conc per layer? higher near top.
     Alg_conc <- Alg/(Aa*zbar) ##[gC/m^-3]
@@ -87,29 +92,33 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     if(any(is.na(c(PAR,Tair,Evap,net_lw,net_sw,Ca)))){
       stop("NA entering tprofile")
     }
-    Tz <<- tprofile(t, Tz, zbar, PAR, Tair, Evap, net_lw, net_sw,Ca)
+    Tz <<- tprofile(t, Tz, zbar, PAR, Tair, Evap, net_lw, net_sw,Ca)#send Ca1 (ligth atten)
     Tz_hist[t,] <<- Tz
     levs = seq(0,zbar,length.out=length(Tz)) #levs of lake. 1 per temp level
 
     #calc depth of epilimnion
-    delta_Tz <- abs(diff(Tz))
-    drop<-which(delta_Tz >= 1*dz)[1] #so degC per meter
-    if(!is.na(drop)){
-      epilimnion_depth[t] <<- z_levs[drop]
-    }else{
-      epilimnion_depth[t] <<- NA
+    min_gradient <- 0.01
+    dTdz <- diff(Tz) / dz
+    peak_idx <- which.max(abs(dTdz))
+    epilimnion_depth[t] <<- z_levs[peak_idx]
+
+    if(z_levs[peak_idx] < min_gradient){
+      epilimnion_depth[t] <<- NA  # water column too well-mixed, no clear thermocline
+    } else {
+      epilimnion_depth[t] <<- z_levs[peak_idx]
     }
+
 
 
     #associated nutrients ffect on APP: J. Norberg
     N_halfsat = 0.003 #[g/m^3] Harris 1986
     TN = Ca*0.09 # N:Stetler et al. 2021- fig 1c [g/m^3]
-    TN_conc <- TN/(Aa*zbar); TN_conc_bylev <- TN_conc/length(levs)
+    TN_conc <- TN/(Aa*zbar); TN_conc_bylev <- TN_conc/length(levs)#Tn Conc for upper and lower? no light in lower anyways...
 
     eating_efficency = 0.95
     APP_max <- (DIC_conc*eating_efficency)*(TN_conc/(TN_conc+N_halfsat))
 
-    #LIGHT
+    #LIGHT #Ca1?
     #kd_tahoe = 0.12#base extinciton rate(kl) for lake tahoe (water on the web)#turbidity(particulate) should haev greater effect
     algal_blur = 0.5 #Toggle such that the PP to DOC is a hump (light V. Nitrogen)
     self_shading <- Alg_conc* algal_blur
