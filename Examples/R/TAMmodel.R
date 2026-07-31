@@ -26,7 +26,7 @@
 # define model for simulation
 tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including dissolved CO2 export
   with(as.list(c(S,p)),{
-    print(t)
+    print(t,sep="")
 
     ### forcings
     PAR=PARapprox(t)  #[einsteins m-2 day-1]
@@ -34,8 +34,8 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     VPD=VPDapprox(t)  #[kPa]
     Tair=Tair_approx(t)  #[degrees C]
     Tsoil=Tsoil_approx(t)  #[degrees C]
-    SW_IN<-SW_IN_approx(t)
-    LW_IN <- LW_IN_approx(t)
+    net_sw<-net_sw_approx(t)
+    net_lw <- net_lw_approx(t)
     #moved leaves from this spot
     Evap=Evap_approx(t) #[cm day-1]
     Snow=Snowapprox(t) #[cm day-1]
@@ -77,27 +77,43 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     GPP = GPPpotAreal*Dwater  #[g C (m ground)-2 day-1]
     #--------------------------------------------------------------------------------------------------
     #AQUATIC PRIMARY PRODUCTIVITY
-    #max possible APP
-    DIC_Conc <- Ci/(Aa*zbar)
-    DOC_Conc <- (Ca)/(Aa*zbar) #[gC/m^-3]
-    Alg_Conc <- Alg/(Aa*zbar) ##[gC/m^-3]
-    eating_efficency = 0.95
-    APP_max <- (0.8*DIC_Conc)*eating_efficency + 0.2*DOC_Conc#remember: if DOC is really high DOC can still let algal grow when no DIC
-
-
-    #parameter for stoichiometry then use how much phos and nitr is coming in per unit carbon. As is for now but adress before we finish
+    DIC_conc <- Ci/(Aa*zbar)
+    DOC_conc <- (Ca)/(Aa*zbar) #[gC/m^-3] #gradient? conc per layer? higher near top.
+    Alg_conc <- Alg/(Aa*zbar) ##[gC/m^-3]
 
     #TEMP
     #Tz msut be made global since tamstep is solved repeatedly in an exterior loop: Tz needs to be saved
-    Tz <<- tprofile(t, Tz, zbar, PAR, Tair, Evap, LW_IN, SW_IN,Ca)
+
+    if(any(is.na(c(PAR,Tair,Evap,net_lw,net_sw,Ca)))){
+      stop("NA entering tprofile")
+    }
+    Tz <<- tprofile(t, Tz, zbar, PAR, Tair, Evap, net_lw, net_sw,Ca)
     Tz_hist[t,] <<- Tz
     levs = seq(0,zbar,length.out=length(Tz)) #levs of lake. 1 per temp level
 
+    #calc depth of epilimnion
+    delta_Tz <- abs(diff(Tz))
+    drop<-which(delta_Tz >= 1*dz)[1] #so degC per meter
+    if(!is.na(drop)){
+      epilimnion_depth[t] <<- z_levs[drop]
+    }else{
+      epilimnion_depth[t] <<- NA
+    }
+
+
+    #associated nutrients ffect on APP: J. Norberg
+    N_halfsat = 0.003 #[g/m^3] Harris 1986
+    TN = Ca*0.09 # N:Stetler et al. 2021- fig 1c [g/m^3]
+    TN_conc <- TN/(Aa*zbar); TN_conc_bylev <- TN_conc/length(levs)
+
+    eating_efficency = 0.95
+    APP_max <- (DIC_conc*eating_efficency)*(TN_conc/(TN_conc+N_halfsat))
+
     #LIGHT
     #kd_tahoe = 0.12#base extinciton rate(kl) for lake tahoe (water on the web)#turbidity(particulate) should haev greater effect
-    algal_blur = 0.1 # what is the relashonhsip between alage presnt and light attenutaution?
-    self_shading <- Alg_Conc* algal_blur
-    kd= 0.321*exp(0.13*(DOC_Conc))+self_shading #Kd according to DOC. (Seekell=.13,0.321)<small lake relation
+    algal_blur = 0.5 #Toggle such that the PP to DOC is a hump (light V. Nitrogen)
+    self_shading <- Alg_conc* algal_blur
+    kd= 0.321*exp(0.13*(DOC_conc))+self_shading #Kd according to DOC. (Seekell=.13,0.321)<small lake relation
     Iz = PAR*exp(-kd*levs)# light at each levels. use this for temp
     Dlightz = 1-exp(-(Iz*log(2)/PARhalf))  # >>light intensity into number from 0-1 at each level
     Dlightz_bar = mean(Dlightz)
@@ -109,30 +125,25 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     init_growth <- 0.5 # how much is light a limiting factor initially (low light) av value
     APP_max_by_level <- numeric(length(levs))
     Iz_by_level <- numeric(length(levs))
-    for(i in seq_along(levs)){
-      t_weighted <- exp(-2.3*((Topt - Tz[i])/(Topt - Tmin))^2)
-      Iz_effective <- max(Iz[i] - Iz_min, 0)
-      Iz_by_level[i] <- Iz_effective
-      growth_rate <- max_growth * t_weighted * (1 - exp(-(init_growth * Iz_effective)/(max_growth * t_weighted)))
-      growth_score <- (growth_rate / max_growth)
-      APP_max_by_level[i] <- (growth_score * APP_max)*(Aa*zbar)
-    }
-    APP_hist[t,] <<- APP_max_by_level#save each temp-light combo per level per day
+
+    t_weighted <- exp(-2.3 * ((Topt - Tz) / (Topt - Tmin))^2)
+    Iz_effective <- pmax(Iz - Iz_min, 0)
+    growth_rate <- max_growth * t_weighted * (1 - exp(-(init_growth * Iz_effective) / (max_growth * t_weighted)))
+    growth_score <- growth_rate / max_growth
+    APP_max_by_level <- (growth_score * APP_max) * (Aa * zbar)
     Iz_hist[t,] <<- Iz_by_level
-
-
+    APP_hist[t,] <<- APP_max_by_level#save each temp-light combo per level per day
 
     #new APP_pot from ligth-temp
     APP <- mean(APP_max_by_level)
+
     #Must be a DIC threshold. If theres no DIC there cannot be algal growth on DOC alone
     DIC_threshold <- 1e-6*(Aa*zbar)
     if(Ci <= DIC_threshold){
       APP <- 0
     }
-    APP <- min(APP,Ci)#APP cannot take more carbon than is available in DIC pool
-
-
-    death_rate = Alg/50 # #gC in algae removed per time step
+    APP <- min(APP,Ci)#APP cannot take more carbon than is available in DIC pool* not sure is neccesary with new APPmax mechanism
+    mortality = Alg*0.03 # #gC in algae removed per time step
     #radiaiotn should raise death rate at the surface
     #--------------------------------------------------------------------------------------------------
 
@@ -150,6 +161,7 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     Rr=max((Ka/365*Cr*Q10v^(Tair/10)), 0) #[g C m^-2 day-1]; 365=days in year
 
     #NPP; leaves modeled after CABLE leaf phenology (refs)
+
     NPP = GPP-Ra-Rr #[g C m^-2 day-1]]
     Lon = 0 ###remove after troubleshooting
     if(LAIareal < Lmax & greenup > 0){
@@ -165,6 +177,7 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
       Lon=0
       Lfall=0
     }
+
 
     NPPalL = ifelse(Lon > 0, NPP-Lon, NPP)#[g C m^-2 day-1]
 
@@ -233,7 +246,10 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
       Pin=0
       export=0
     }
-    Q23 = max(min(Ks*((W2-r)/(Wmax2-r))^((2/Bp2)+3), (W2)),0) #[cm H20 day-1] #need Ks, r, Bp (param values)
+
+    theta <- max((W2 - r)/(Wmax2 - r), 0)
+    Q23 <- max(min(Ks * theta^((2/Bp2) + 3), W2), 0)
+    #Q23 = max(min(Ks*((W2-r)/(Wmax2-r))^((2/Bp2)+3), (W2)),0) #[cm H20 day-1] #need Ks, r, Bp (param values)
     Q2 = ifelse(W2 > W20, (W2-W20)/Tstar, 0) #[cm H20 day-1]
     Q3 = ifelse(W3 > W30, (W3-W30)/Tstar2, 0) #[cm H20 day-1]
 
@@ -349,7 +365,7 @@ tamStep<-function(t,S,p, DIC=TRUE, trblshoot=FALSE){ #default to including disso
     #lake differential equations
     dCa.dt = (LCT1+LCT2+LCT3)*Ac    + Aa*(P+Snow)*Cprecip-(Ca/V)*Qout  -deltaA*Ca #aquatic DOC pool; [g C]
     dCi.dt = (LDIC1+LDIC2+LDIC3)*Ac + Aa*(P+Snow)*Ciprecip-(Ci/V)*Qout +deltaA*Ca - (em_C/2) - APP # aquatic DIC pool; [g C]
-    dAlg.dt = APP - death_rate
+    dAlg.dt = APP - mortality
     # dCp.dt = ero*Ac - (Cp/V)*Qout - [SETTLING] # aquatic POC pool (from terrestrial inputs); [g C]
     #Add a phytoplankton biomass pool [g C]
 
