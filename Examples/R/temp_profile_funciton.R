@@ -1,7 +1,7 @@
 #Function verison of tempprofile creating a temperature gradient everyday of model runtime
 #
 
-tprofile<-function(t,Tz,zbar,PAR,Tair,EVAP,net_lw,net_sw,Ca){
+tprofile<-function(t,Tz,zbar,PAR,Tair,EVAP,net_lw,net_sw,Ca1){
 
 
   #levels of lake by increment dz
@@ -28,7 +28,7 @@ tprofile<-function(t,Tz,zbar,PAR,Tair,EVAP,net_lw,net_sw,Ca){
   Evap = max(EVAP, 0)
 
   #first get the PAR attenution as you have in TAMstep
-  DOC_Conc = Ca/(zbar*Aa) #[gC/m^-3] #Ca/(Aa*zbar) on a Dtemp limited run gave 10.40957 g/M^3
+  DOC_Conc = Ca1/(zbar*Aa) #[gC/m^-3] #Ca/(Aa*zbar) on a Dtemp limited run gave 10.40957 g/M^3
   kd= 0.321*exp(.13*DOC_Conc)#Kd according to DOC. (Seekell=.13,0.321)<small lake relation
   Iz = PARJ*exp(-kd*z_levs)#light at each level
 
