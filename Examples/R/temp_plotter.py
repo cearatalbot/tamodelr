@@ -59,11 +59,11 @@ ax1.plot(spring.values,-1*(spring.index),color="green",label="spring")
 ax1.plot(summer.values,-1*(summer.index),color="orange",label="summer")
 ax1.plot(fall.values,-1*(fall.index),color="red",label="fall")
 
-ax2 = ax.twiny()
-ax2.plot(Iz_winter.values,-1*(winter.index),color="pink",label="winter")
-ax2.plot(Iz_spring.values,-1*(spring.index),color="pink",label="spring")
-ax2.plot(Iz_summer.values,-1*(summer.index),color="pink",label="summer")
-ax2.plot(Iz_fall.values,-1*(fall.index),color="pink",label="fall")
+#ax2 = ax.twiny()
+#ax2.plot(Iz_winter.values,-1*(winter.index),color="pink",label="winter")
+#ax2.plot(Iz_spring.values,-1*(spring.index),color="pink",label="spring")
+#ax2.plot(Iz_summer.values,-1*(summer.index),color="pink",label="summer")
+#ax2.plot(Iz_fall.values,-1*(fall.index),color="pink",label="fall")
 
 
 ax.legend()

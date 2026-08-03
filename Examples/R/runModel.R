@@ -87,8 +87,8 @@ for(y in 1:nrow(initDF)){
   }
 }
 
-spinupALL_kd <- vector("list", nrow(initDF))#added to keep track of all PFT results
-names(spinupALL_kd)<-pfts_site
+spinupALL <- vector("list", nrow(initDF))#added to keep track of all PFT results
+names(spinupALL)<-pfts_site
 #4a. Loop over each plant functional type
 for(i in 1:nrow(initDF)){
   nruns=0 #keep track of how many times spinup simulations are done for each pft
@@ -137,6 +137,7 @@ for(i in 1:nrow(initDF)){
     SW_IN_approx <<- approxfun(x = as.numeric(site_forcings$runDay), y = as.numeric(site_forcings$SW_IN_F))
     LW_IN_approx <<- approxfun(x = as.numeric(site_forcings$runDay), y = as.numeric(site_forcings$LW_IN_F))
     Tz<<-NULL
+    epilimnion_depth<<-rep(NA,nrow(forcings))
     #---------------------------------------------------------------------------
     #to save the temperature and algal growth profile (see how they evolve)
     APP_hist  <<- matrix(0, nrow = nrow(forcings), ncol = length(z_levs))
@@ -166,7 +167,7 @@ for(i in 1:nrow(initDF)){
   }
 
   spinup$pft<-initDF$PFT[i] #label PFT
-  spinupALL_kd[[i]] <- spinup # add each PFT to spinupALL_kd
+  spinupALL[[i]] <- spinup # add each PFT to spinupALL
 
   #update the initial conditions for dynamic runs with the model outputs from the last day of spin-up
   #we can ask: how do these final initial conditions change when we adjust values about the lake?
@@ -174,7 +175,7 @@ for(i in 1:nrow(initDF)){
     inits[i,z]<-spinup[nrow(spinup),which(colnames(spinup)==colnames(inits)[z])]
   }
 }#end model loop
-spinupALL_kd <- do.call(rbind, spinupALL_kd)#one single df instead of 3 in a vector
-rownames(spinupALL_kd) <- NULL#remove unhelpfull first col
+spinupALL <- do.call(rbind, spinupALL)#one single df instead of 3 in a vector
+rownames(spinupALL) <- NULL#remove unhelpfull first col
 
 

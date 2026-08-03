@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-df = r.spinupALL_kd
+df = r.spinupALL
 forcings = r.forcings
 
 fix,ax = plt.subplots(layout="constrained")
 ax1 = ax.twinx()
 time = df['time']
 ax.plot(time,df["Ca"],color='blue',label="Organic")
-ax.plot(time,df["Ci"],color="grey",label="Inorganic")
+ax.plot(time,df["Ci"],color="k",label="Inorganic",linewidth = .8)
 ax.plot(time,df["Alg"],color='green',label="Biomass")
 #ax1.plot(time,forcings["TA_F"],color='red',label="temp",linewidth = .3)
 ax.legend()
