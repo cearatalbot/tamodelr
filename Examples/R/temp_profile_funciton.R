@@ -3,7 +3,6 @@
 
 tprofile<-function(t,Tz,zbar,PAR,Tair,EVAP,net_lw,net_sw,Ca1){
 
-
   #levels of lake by increment dz
   z_levs <- seq(0,zbar,dz)
   num_levels<-length(z_levs)
@@ -15,11 +14,22 @@ tprofile<-function(t,Tz,zbar,PAR,Tair,EVAP,net_lw,net_sw,Ca1){
   cw<-4184#[J/kg*C] heat capacity
   rho <-1000#[kg/M^3] density
   dt_sec <- 86400 #seconds in a day
-  #Kz_vec formulated from neg exp fit(10e-4,10e-5,10e-5,10e-6,10e-6,10e-6)
-  Kz_vec <- 0.000117*exp(-.921*z_levs)#set up a diffusion rate gradient
   sb <- 5.67e-8 #stephen boltz for lw out
   ewtr <- 0.97 #emmesivity of water about
   total_days <- nrow(site_forcings)
+
+  #set up a diffusion rate gradient
+  #Kz_vec formulated from neg exp fit(10e-4,10e-5,10e-5,10e-6,10e-6,10e-6)
+  #Use t to determine season to set Kz diffusivity (stormier in the winter)
+  seas <- t_to_season(t)
+  if(seas == "fall" || seas == "spring"){#'middel of the road' diffusivity
+    Kz_vec <- 0.000117*exp(-.921*z_levs)
+  }else if(seas == "summer"){
+    Kz_vec <- 0.000117*exp((-.921*1.25)*z_levs)#'not as much wind' diffusivity is low
+  }else if(seas == "winter"){
+    Kz_vec <- 0.000117*exp((-.921/3)*z_levs)#winter stroms diffusivity is high
+  }
+
 
   #---------------------------------------------------------------------------
   PARJ<- PAR#*219000#convert to J
@@ -69,18 +79,30 @@ tprofile<-function(t,Tz,zbar,PAR,Tair,EVAP,net_lw,net_sw,Ca1){
   }
   Tz_new[num_levels] <-Tz_new[num_levels-1]
 
+
   #Heat Diffusion
   Tz_new <- implicit_diffuse(Tz_new,Kz_vec,dz,dt_sec)
+  if(any(is.na(Tz_new)) || any(!is.finite(Tz_new))){
+    cat("NaN/Inf detected at t =", t, "\n")
+    cat("Kz_vec range:", range(Kz_vec), "\n")
+    cat("Ca1:", Ca1, " DOC_Conc:", DOC_Conc, " kd:", kd, "\n")
+    cat("Tz before diffuse:", range(Tz), "\n")
+    browser()  # or stop() to halt and inspect
+  }
   Tz<-Tz_new
 
 
-
-  tol =1e-4
+  #Density Based Mixing
+  calc_rho <- function(temp){
+    1000*(1 - 6.63e-6*(temp-3.98)^2 )
+  }
+  tol =1e-5#tolerance for mixing
   repeat{
     inversion_found <- FALSE
     for(z in 1:(num_levels-1)){
 
-      if((Tz[z+1] - Tz[z])>tol){
+      #if shallower layer denser than deeper layer (+tol) it will sink
+      if((calc_rho(Tz[z]) > calc_rho(Tz[z+1]) + tol)){
         avg <- (Tz[z]+Tz[z+1])/2
         Tz[z+1] <- avg
         Tz[z] <- avg

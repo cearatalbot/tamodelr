@@ -27,3 +27,27 @@ implicit_diffuse <- function(Tz, Kz_vec, dz, dt){
   b[n] <- 1 + r_dn[n]; c[n] <- 0
   backwards_solve(a, b, c, Tz)
 }
+
+winter = seq(0,80,1)
+spring = seq(81,171,1)
+summer = seq(172,263,1)
+fall = seq(264,365,1)
+
+t_to_season <- function(t){
+  doy <- t%%365
+  if(doy %in% winter){
+    return("winter")
+  }else if(doy %in% spring){
+    return("spring")
+  }else if(doy %in% summer){
+    return("summer")
+  }else{
+    return("fall")
+  }
+}
+
+
+
+
+
+
