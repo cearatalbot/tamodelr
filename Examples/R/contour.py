@@ -6,8 +6,6 @@ import numpy as np
 import pandas as pd
 
 
-
-
 Tz_hist = r.Tz_hist
 Tz_df = pd.DataFrame(Tz_hist)
 APP_hist = r.APP_hist
@@ -89,14 +87,13 @@ def doyfillplot_log(ax, dat, cmap, cb_lab, title, n_levels=20, vmin=None, vmax=N
     ax.set_xlabel("Day of Year")
     ax.set_ylabel("Depth (m)")
     ax.set_title(title)
-    #plt.show()
+    plt.show()
     
 ax0,ax1,ax2= three()
 tzlevs = np.arange(15,30,.5)
 doyfillplot(ax0,Tz_df,tzlevs,'plasma','Temperature (C$^o$)',"Temperature Profile")
 doyfillplot_log(ax2, APP_df, 'GnBu_r', 'APP', "APP Profile")
 doyfillplot_log(ax1, Iz_df, 'PuBu_r', 'Light', "Light Profile")
-
 
 #Day of year temp contour with epilimnion depth. 
 epi_depth=np.array(r.epilimnion_depth,dtype=float)
@@ -105,45 +102,46 @@ epi_df  = pd.DataFrame({'epi_depth':epi_depth},index=dates)
 epi_df['doy'] = epi_df.index.dayofyear
 epi_doy = epi_df.groupby('doy')['epi_depth'].mean()
 
-tzlevs = np.arange(-10,10,.5)
+tzlevs = np.arange(5,20,.5)
 fig,ax=plt.subplots(layout="constrained")
-doyfillplot(ax,Tz_df.iloc[:, :10],tzlevs,'plasma','Temperature (C$^o$)',"Temperature Profile")
-#ax.plot(epi_doy.index,-1*epi_doy.values,linewidth=.6,color="k")
+doyfillplot(ax,Tz_df.iloc[:, :15],tzlevs,'plasma','Temperature (C$^o$)',"Temperature Profile")
+#ax.plot(epi_doy.index,(-1*epi_doy.values)/10,linewidth=1,color="k")
+ax.get_xticks([0,80,171,263])
+ax.set_xticklabels(["Wnt","Spr","Smr","Fal"])
 plt.show()
 
 
 
+
+
 #3d
+import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from matplotlib.colors import Normalize
 
-def doy_average(dat):
-    dat = dat.copy()
-    dat['date'] = pd.date_range(start=start_date, periods=len(dat), freq="D")
-    dat = dat.set_index('date')
-    dat = dat.groupby(dat.index.dayofyear).mean(numeric_only=True)
-    return dat
-
-
-def app_temp_3d(Tz_df, APP_df, cmap='plasma', app_log=True):
+def app_temp_3d(Tz_df, APP_df, cmap='plasma', app_log=True, max_depth=22):
     Tz_doy = doy_average(Tz_df)
     APP_doy = doy_average(APP_df)
-
     depth_levs = np.arange(0, Tz_doy.shape[1], 1)
-    days = Tz_doy.index.values
 
+    # only keep depth levels within the range you actually want to show
+    depth_mask = depth_levs <= max_depth
+    depth_levs = depth_levs[depth_mask]
+
+    days = Tz_doy.index.values
     X, Y = np.meshgrid(days, -1 * depth_levs)
     Temp = Tz_doy[depth_levs].values.T
     APP = APP_doy[depth_levs].values.T
 
     if app_log:
-        Z = np.where(APP <= 0, 0, np.log10(APP))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            Z = np.where(APP <= 0, 0, np.log10(APP))
     else:
         Z = APP
 
     norm = Normalize(vmin=np.nanmin(Temp), vmax=np.nanmax(Temp))
-    colors = mpl.colormaps[cmap](norm(Temp))  # ← fixed
+    colors = mpl.colormaps[cmap](norm(Temp))
 
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection='3d')
@@ -153,30 +151,23 @@ def app_temp_3d(Tz_df, APP_df, cmap='plasma', app_log=True):
         rstride=1, cstride=1,
         linewidth=0, antialiased=True, shade=False
     )
-
     ax.set_xlabel("Day of Year")
     ax.set_ylabel("Depth (m)")
+    ax.set_ylim(-max_depth, 0)  # now cosmetic, since data itself already stops here
     ax.set_zlabel("log10(APP)" if app_log else "APP")
     ax.set_title("APP Surface Colored by Temperature")
-
-    m = cm.ScalarMappable(cmap=cmap, norm=norm)  # ScalarMappable still exists, just get_cmap is gone
+    m = cm.ScalarMappable(cmap=cmap, norm=norm)
     m.set_array(Temp)
-    #fig.colorbar(m, ax=ax, shrink=0.6, label="Temperature (°C)")
-
     plt.show()
 
+app_temp_3d(Tz_df, APP_df)
+app_temp_3d(APP_df,Tz_df)
 
-
-app_temp_3d(Tz_df,APP_df)
-
-spin = r.spinupALL
-fig,ax=plt.subplots(layout="constrained")
-ax.scatter(spin['Ca'],spin["Alg"],s=1,color='k',alpha=.5)
-ax.set_xlabel("DOC")
-ax.set_ylabel("PP (Biomass)")
-ax.grid()
-plt.show()
-
-
-
+#spin = r.spinupALL
+#fig,ax=plt.subplots(layout="constrained")
+#ax.scatter(spin['Ca1'],spin["Alg"],s=1,color='k',alpha=.5)
+#ax.set_xlabel("DOC")
+#ax.set_ylabel("PP (Biomass)")
+#ax.grid()
+#plt.show()
 
